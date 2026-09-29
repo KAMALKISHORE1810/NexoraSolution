@@ -1,0 +1,29 @@
+@model IEnumerable<NexoraEmployeePayroll.Models.EmployeeOnboardingRequest>
+@{ ViewData["Title"] = "Employee Onboarding Approvals"; }
+<div class="card">
+    <div class="card-header"><div><h3>Employee Onboarding Approvals</h3><p class="muted">HR-submitted employee requests are created as active employee accounts only after Admin approval.</p></div><a class="btn btn-secondary btn-sm" asp-controller="Dashboard" asp-action="Index">Back to Dashboard</a></div>
+    <div class="card-body table-responsive">
+        <table><thead><tr><th>Request</th><th>Employee</th><th>Designation</th><th>Department</th><th>Email</th><th>Joining Date</th><th>Salary</th><th>Submitted By</th><th>Status</th><th>Action</th></tr></thead><tbody>
+        @foreach (var r in Model)
+        {
+            var status = r.Approved == null ? "Pending" : r.Approved.Value ? "Approved" : "Rejected";
+            var badge = r.Approved == null ? "badge-pending" : r.Approved.Value ? "badge-approved" : "badge-rejected";
+            <tr>
+                <td>ONB-@r.Id.ToString("000")</td><td>@r.Name</td><td>@r.Designation</td><td>@r.Department</td><td>@r.Email</td><td>@r.DateOfJoining.ToString("dd-MM-yyyy")</td><td>₹@r.Salary.ToString("N0")</td><td>@r.SubmittedBy</td>
+                <td><span class="badge @badge">@status</span></td>
+                <td>
+                    @if (r.Approved == null)
+                    {
+                        <form asp-action="DecideOnboarding" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@r.Id"/><input type="hidden" name="approve" value="true"/><button class="btn btn-success btn-sm">Approve</button></form>
+                        <form asp-action="DecideOnboarding" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@r.Id"/><input type="hidden" name="approve" value="false"/><button class="btn btn-danger btn-sm">Reject</button></form>
+                    }
+                    else
+                    {
+                        <span class="muted">Completed</span>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody></table>
+    </div>
+</div>

@@ -1,0 +1,116 @@
+@model Employee
+@using NexoraEmployeePayroll.Enums
+@using NexoraEmployeePayroll.ViewModels
+@{
+    ViewData["Title"] = "My Profile";
+    var pending = ViewBag.PendingOffboarding as OffboardingRequest;
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    var approver = role == nameof(UserRole.Employee) ? "HR" : "Admin";
+    var offboardingHistory = ViewBag.OffboardingHistory as IEnumerable<OffboardingRequest> ?? Array.Empty<OffboardingRequest>();
+    var myRatings = ViewBag.MyRatings as IEnumerable<MyRatingViewModel> ?? Array.Empty<MyRatingViewModel>();
+}
+<div class="profile-page">
+<div class="profile-grid">
+<div class="card profile-summary-card">
+    <div class="card-header"><div><h3>My Profile</h3><p class="muted">Only your own profile can be updated here.</p></div></div>
+    <div class="card-body">
+        <div class="profile-detail-grid">
+            <div><b>Name</b><span>@Model.Name</span></div>
+            <div><b>Email</b><span>@Model.Email</span></div>
+            <div><b>Designation</b><span>@Model.Designation</span></div>
+            <div><b>Department</b><span>@Model.Department?.DepartmentName</span></div>
+            <div><b>Contact</b><span>@Model.ContactInfo</span></div>
+            <div><b>Status</b><span class="badge @(Model.Status == EmployeeStatus.Active ? "badge-approved" : "badge-rejected")">@Model.Status</span></div>
+        </div>
+    </div>
+    </div>
+
+@if (Model.Status == EmployeeStatus.Active)
+{
+    <div class="profile-grid profile-action-grid">
+        <div class="card">
+            <div class="card-header"><div><h3>Update Contact Number</h3><p class="muted">Your contact number must contain exactly 10 digits and must be unique.</p></div></div>
+            <div class="card-body">
+                <form asp-action="UpdateContact" method="post" class="profile-contact-form">
+                    @Html.AntiForgeryToken()
+                    <div class="form-group"><label>Contact Number</label><input name="ContactInfo" value="@Model.ContactInfo" class="form-control" maxlength="10" minlength="10" inputmode="numeric" pattern="[0-9]{10}" required /></div>
+                    <button class="btn btn-primary" type="submit">Update Contact</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card offboarding-card">
+            <div class="card-header"><div><h3>Offboarding</h3><p class="muted">Request your offboarding. @approver will review the request before your account is made inactive.</p></div></div>
+            <div class="card-body">
+                @if (pending != null)
+                {
+                    <div class="request-state"><span class="badge badge-pending">PENDING</span><span>Your offboarding request was submitted on @pending.RequestedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm") and is waiting for @approver approval.</span></div>
+                }
+                else
+                {
+                    <p class="muted">Submitting this request does not make you inactive immediately.</p>
+                    <form asp-action="RequestOffboarding" method="post">@Html.AntiForgeryToken()<button class="btn btn-danger" type="submit">Request Offboarding</button></form>
+                }
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card offboarding-card profile-inactive-card"><div class="card-body"><strong>This account is inactive.</strong> Login access has been disabled.</div></div>
+}
+
+</div>
+
+<div class="card profile-history-card">
+    <div class="card-header"><div><h3>My Offboarding History</h3><p class="muted">Your offboarding requests and the decisions made on them.</p></div></div>
+    <div class="card-body table-responsive">
+        <table>
+            <thead><tr><th>Requested Date</th><th>Requested By</th><th>Status</th><th>Decision Date</th><th>Remarks</th></tr></thead>
+            <tbody>
+            @foreach (var request in offboardingHistory)
+            {
+                var statusText = request.Status == OffboardingStatus.Pending ? "APPLIED" : request.Status.ToString().ToUpperInvariant();
+                var badgeClass = request.Status == OffboardingStatus.Pending ? "badge-pending" : request.Status == OffboardingStatus.Approved ? "badge-approved" : "badge-rejected";
+                <tr>
+                    <td>@request.RequestedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+                    <td>@request.RequestedByRole</td>
+                    <td><span class="badge @badgeClass">@statusText</span></td>
+                    <td>@(request.DecidedAt.HasValue ? request.DecidedAt.Value.ToLocalTime().ToString("dd-MM-yyyy HH:mm") : "-")</td>
+                    <td>@(string.IsNullOrWhiteSpace(request.DecisionRemarks) ? "-" : request.DecisionRemarks)</td>
+                </tr>
+            }
+            @if (!offboardingHistory.Any())
+            {
+                <tr><td colspan="5" class="muted">No offboarding history available.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card profile-history-card">
+    <div class="card-header"><div><h3>My Performance Ratings</h3><p class="muted">Ratings received from your authorized evaluator(s).</p></div></div>
+    <div class="card-body table-responsive">
+        <table>
+            <thead><tr><th>Date</th><th>Rating</th><th>Evaluator</th><th>Role</th><th>Remarks</th></tr></thead>
+            <tbody>
+            @foreach (var rating in myRatings)
+            {
+                <tr>
+                    <td>@rating.EvaluationDate.ToString("dd-MM-yyyy")</td>
+                    <td>⭐ @rating.Score.ToString("0.0") / 5</td>
+                    <td>@rating.EvaluatedByName</td>
+                    <td>@rating.EvaluatedByRole</td>
+                    <td>@(string.IsNullOrWhiteSpace(rating.Remarks) ? "-" : rating.Remarks)</td>
+                </tr>
+            }
+            @if (!myRatings.Any())
+            {
+                <tr><td colspan="5" class="muted">No performance ratings have been recorded for you yet.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>

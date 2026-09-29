@@ -1,0 +1,15 @@
+@NexoraAPI_HostAddress = http://localhost:5145
+
+GET {{NexoraAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+
+POST {{NexoraAPI_HostAddress}}/api/auth/getuser
+Accept: application/json
+Content-Type: application/json
+{
+    "Username": "manager",
+    "Password": "mgr123"
+}

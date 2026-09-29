@@ -1,0 +1,55 @@
+@model IEnumerable<OffboardingRequest>
+@using NexoraEmployeePayroll.Enums
+@{
+    var isAdmin = User.IsInRole("Admin");
+    ViewData["Title"] = isAdmin ? "Officer Offboarding Approvals" : "Employee Offboarding Approvals";
+    var requests = Model?.ToList() ?? new List<OffboardingRequest>();
+    var pending = requests.Where(x => x.Status == OffboardingStatus.Pending).ToList();
+    var history = requests.Where(x => x.Status != OffboardingStatus.Pending).ToList();
+}
+
+<div class="card">
+  <div class="card-header"><div><h3>@ViewData["Title"]</h3><p class="muted">@(isAdmin ? "Admin approval is required for Manager, HR Officer and Payroll Officer offboarding." : "HR approval is required before an Employee account is made inactive.")</p></div></div>
+  <div class="card-body table-responsive">
+    <h4 class="section-subtitle">Pending Offboarding</h4>
+    <table class="offboarding-table">
+      <thead><tr><th>Employee</th><th>Designation</th><th>Department</th><th>Requested By</th><th>Requested Date</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      @foreach(var request in pending)
+      {
+        <tr>
+          <td>@request.Employee?.Name</td><td>@request.Employee?.Designation</td><td>@request.Employee?.Department?.DepartmentName</td>
+          <td>@request.RequestedByRole</td><td>@request.RequestedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+          <td><span class="badge badge-pending">APPLIED</span></td>
+          <td><div class="leave-actions">
+            <form asp-action="DecideOffboarding" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@request.Id"/><input type="hidden" name="approve" value="true"/><button class="btn btn-success btn-sm" type="submit">Approve</button></form>
+            <form asp-action="DecideOffboarding" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@request.Id"/><input type="hidden" name="approve" value="false"/><button class="btn btn-danger btn-sm" type="submit">Reject</button></form>
+          </div></td>
+        </tr>
+      }
+      @if(!pending.Any()){<tr><td colspan="7" class="muted">No pending offboarding requests.</td></tr>}
+      </tbody>
+    </table>
+
+    <h4 class="section-subtitle" style="margin-top:28px">Offboarding Decision History</h4>
+    <table class="offboarding-table">
+      <thead><tr><th>Employee</th><th>Requested By</th><th>Requested Date</th><th>Status</th><th>Decision Date</th><th>Decided By</th><th>Remarks</th></tr></thead>
+      <tbody>
+      @foreach(var request in history)
+      {
+        var badgeClass = request.Status == OffboardingStatus.Approved ? "badge-approved" : "badge-rejected";
+        <tr>
+          <td>@request.Employee?.Name</td>
+          <td>@request.RequestedByRole</td>
+          <td>@request.RequestedAt.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</td>
+          <td><span class="badge @badgeClass">@request.Status.ToString().ToUpperInvariant()</span></td>
+          <td>@(request.DecidedAt.HasValue ? request.DecidedAt.Value.ToLocalTime().ToString("dd-MM-yyyy HH:mm") : "-")</td>
+          <td>@(request.DecidedByEmployeeId.HasValue ? $"EMP-{request.DecidedByEmployeeId.Value:000}" : "-")</td>
+          <td>@(string.IsNullOrWhiteSpace(request.DecisionRemarks) ? "-" : request.DecisionRemarks)</td>
+        </tr>
+      }
+      @if(!history.Any()){<tr><td colspan="7" class="muted">No offboarding decisions recorded yet.</td></tr>}
+      </tbody>
+    </table>
+  </div>
+</div>

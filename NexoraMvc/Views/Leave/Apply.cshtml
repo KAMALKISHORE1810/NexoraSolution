@@ -1,0 +1,27 @@
+@model LeaveApplyViewModel
+@{
+    ViewData["Title"] = "Apply My Leave";
+}
+<div class="card">
+    <div class="card-header"><div><h3>Apply for Leave</h3><p class="muted">Saturday and Sunday are holidays and are not counted as leave days.</p></div></div>
+    <div class="card-body">
+        <p class="muted">Manager, HR Officer, Payroll Officer and Employee leave requests are submitted to the appropriate approver. Manager/HR/Payroll leave requires Admin approval.</p>
+        @if (User.IsInRole("HROfficer") || User.IsInRole("Manager") || User.IsInRole("Employee"))
+        {
+            <div class="metrics-grid" style="margin-bottom:18px">
+                <div class="metric-card"><div>Casual Leave Remaining (@(ViewBag.LeaveYear ?? DateTime.Today.Year))</div><strong>@(ViewBag.CasualRemaining ?? 12) / 12</strong></div>
+                <div class="metric-card"><div>Sick Leave Remaining (@(ViewBag.LeaveYear ?? DateTime.Today.Year))</div><strong>@(ViewBag.SickRemaining ?? 12) / 12</strong></div>
+            </div>
+        }
+        <form asp-action="Apply" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+            <div class="form-grid">
+                <div class="form-group"><label asp-for="StartDate">Start Date</label><input asp-for="StartDate" type="date"/></div>
+                <div class="form-group"><label asp-for="EndDate">End Date</label><input asp-for="EndDate" type="date"/></div>
+                <div class="form-group"><label asp-for="LeaveType">Leave Type</label><select asp-for="LeaveType"><option value="1">Casual</option><option value="2">Sick</option><option value="3">Annual</option></select></div>
+            </div>
+            <button class="btn btn-primary">Submit Leave Request</button>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../NexoraAPI/NexoraAPI.csproj" Id="7eafd4f6-47fb-4604-b3d1-7934bb9cb04a" />
+  <Project Path="NexoraEmployeePayroll.csproj" />
+</Solution>

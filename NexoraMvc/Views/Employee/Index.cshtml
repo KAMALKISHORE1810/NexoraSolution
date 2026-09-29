@@ -1,0 +1,54 @@
+@model IEnumerable<Employee>
+@using NexoraEmployeePayroll.Enums
+@{
+    ViewData["Title"] = User.IsInRole("Employee") ? "My Profile" : User.IsInRole("Manager") ? "Team Employees" : "Employee Directory";
+    var ownEmployeeId = int.TryParse(User.FindFirst("EmployeeId")?.Value, out var oid) ? oid : 0;
+}
+<div class="card">
+    <div class="card-header">
+        <div><h3>@ViewData["Title"]</h3><p class="muted">Live employee information from SQL Server.</p></div>
+        @if(User.IsInRole("HROfficer")) { <a class="btn btn-primary btn-sm" asp-action="Create">Onboard Employee</a> }
+    </div>
+    @if(User.IsInRole("Manager"))
+    {
+        <div class="card-body table-responsive">
+            <table>
+                <thead><tr><th>Name</th><th>Email</th><th>Designation</th><th>Department</th></tr></thead>
+                <tbody>
+                @foreach(var e in Model)
+                {
+                    <tr><td>@e.Name</td><td>@e.Email</td><td>@e.Designation</td><td>@e.Department?.DepartmentName</td></tr>
+                }
+                @if(!Model.Any()){<tr><td colspan="4" class="muted">No active employees found in your department.</td></tr>}
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="card-body table-responsive">
+            @foreach(var e in Model)
+            {
+                <div class="profile-card">
+                    <div><strong>@e.Name</strong><span>EMP-@e.EmployeeId.ToString("000")</span></div>
+                    <div><b>Designation</b><span>@e.Designation</span></div>
+                    <div><b>Department</b><span>@e.Department?.DepartmentName</span></div>
+                    <div><b>Email</b><span>@e.Email</span></div>
+                    <div><b>Date of Birth</b><span>@(e.DateOfBirth?.ToString("dd-MM-yyyy") ?? "Not recorded")</span></div>
+                    <div><b>Contact</b><span>@e.ContactInfo</span></div>
+                    @if (!User.IsInRole("Employee") || e.EmployeeId == ownEmployeeId)
+                    {
+                        <div><b>Basic Salary</b><span>₹@e.BasicSalary.ToString("N0")</span></div>
+                    }
+                    <div><b>Average Rating</b><span>@(e.Evaluations.Any() ? e.Evaluations.Average(x => x.Score).ToString("0.0") + " / 5" : "Not rated")</span></div>
+                    <div><b>Status</b><span class="badge @(e.Status == EmployeeStatus.Active ? "badge-paid" : "badge-rejected")">@e.Status</span></div>
+                    @if (User.IsInRole("PayrollOfficer") && e.Status == EmployeeStatus.Active)
+                    {
+                        <div><b>Payroll</b><span><a class="btn btn-primary btn-sm" asp-controller="Payroll" asp-action="Details" asp-route-employeeId="@e.EmployeeId">View Salary Details</a></span></div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+

@@ -1,0 +1,4 @@
+@model (int employees, decimal attendance, decimal payroll, int pending)
+@{ViewData["Title"]="Payroll Analytics & Reports";}
+<div class="metrics-grid">
+	<div class="metric-card"><div>Total Employees</div><strong>@Model.employees</strong></div><div class="metric-card"><div>Average Attendance</div><strong>@Model.attendance%</strong></div><div class="metric-card"><div>Paid Payroll</div><strong>₹@Model.payroll.ToString("N0")</strong></div><div class="metric-card"><div>Pending Approvals</div><strong>@Model.pending</strong></div></div>

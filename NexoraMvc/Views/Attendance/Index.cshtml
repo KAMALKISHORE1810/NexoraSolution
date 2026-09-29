@@ -1,0 +1,20 @@
+@model IEnumerable<Attendance>
+@using NexoraEmployeePayroll.Enums
+@using NexoraEmployeePayroll.Models
+@{ ViewData["Title"] = ViewBag.IsManager == true ? "Team Attendance" : "My Attendance"; }
+@if(ViewBag.IsManager == true)
+{
+    var team = ViewBag.Team as IEnumerable<Employee> ?? Array.Empty<Employee>();
+    var records = ViewBag.TeamAttendance as IEnumerable<Attendance> ?? Array.Empty<Attendance>();
+    <div class="card"><div class="card-header"><h3>Mark Team Attendance</h3><p class="muted">Managers can mark attendance only for employees in their department.</p></div><div class="card-body table-responsive"><table><thead><tr><th>Employee ID</th><th>Employee</th><th>Department</th><th>Attendance</th></tr></thead><tbody>
+    @foreach(var e in team)
+    {
+        <tr><td>EMP-@e.EmployeeId.ToString("000")</td><td>@e.Name</td><td>@e.Department?.DepartmentName</td><td><form asp-action="Mark" method="post" class="inline-form attendance-form">@Html.AntiForgeryToken()<input type="hidden" name="employeeId" value="@e.EmployeeId"/><input type="date" name="date" value="@DateTime.Today.ToString("yyyy-MM-dd")"/><select name="status" required><option value="">-- Select --</option><option value="Present">Present</option><option value="Absent">Absent</option></select><button class="btn btn-success btn-sm">Save</button></form></td></tr>
+    }
+    </tbody></table></div></div>
+    <div class="card"><div class="card-header"><h3>Attendance Report</h3></div><div class="card-body table-responsive"><table><thead><tr><th>Employee</th><th>Date</th><th>Status</th></tr></thead><tbody>@foreach(var a in records){<tr><td>@a.Employee?.Name</td><td>@a.Date.ToString("dd-MM-yyyy")</td><td>@a.Status</td></tr>}</tbody></table></div></div>
+}
+else
+{
+    <div class="card"><div class="card-header"><h3>My Attendance</h3><p class="muted">Attendance is view-only.</p></div><div class="card-body table-responsive"><table><thead><tr><th>Date</th><th>Status</th></tr></thead><tbody>@foreach(var a in Model){<tr><td>@a.Date.ToString("dd-MM-yyyy")</td><td><span class="badge @(a.Status==AttendanceStatus.Present?"badge-present":"badge-absent")">@a.Status</span></td></tr>}</tbody></table></div></div>
+}

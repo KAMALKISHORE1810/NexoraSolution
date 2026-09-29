@@ -1,0 +1,27 @@
+@model IEnumerable<LeaveRequest>
+@using NexoraEmployeePayroll.Enums
+@{
+ ViewData["Title"] = User.IsInRole("Admin") ? "Staff Leave Approvals" : User.IsInRole("Manager") ? "Team Leave Approvals" : User.IsInRole("PayrollOfficer") ? "My Leave & History" : "My Leave";
+ int WorkingDays(DateTime start, DateTime end) { var count=0; for(var d=start.Date; d<=end.Date; d=d.AddDays(1)) if(d.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday) count++; return count; }
+ var myLeave = ViewBag.MyLeaveHistory as IEnumerable<LeaveRequest> ?? Array.Empty<LeaveRequest>();
+ string BadgeClass(LeaveStatus status) => status switch { LeaveStatus.Applied => "badge-pending", LeaveStatus.Approved => "badge-approved", LeaveStatus.Cancelled => "badge-cancelled", LeaveStatus.Rejected => "badge-rejected", _ => "badge-pending" };
+}
+@if(User.IsInRole("Manager"))
+{
+<div class="card">
+ <div class="card-header"><div><h3>My Applied Leave History</h3><p class="muted">Your own leave requests and their latest status.</p></div><a class="btn btn-primary btn-sm" asp-action="Apply">Apply My Leave</a></div>
+ <div class="card-body table-responsive"><table class="leave-table"><thead><tr><th>Dates</th><th>Working Days</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+ @foreach(var l in myLeave){<tr><td>@l.StartDate.ToString("dd-MM-yyyy") to @l.EndDate.ToString("dd-MM-yyyy")</td><td>@WorkingDays(l.StartDate,l.EndDate)</td><td>@l.LeaveType</td><td><span class="badge leave-status @BadgeClass(l.Status)">@l.Status</span></td><td class="leave-actions">@if(l.Status is LeaveStatus.Applied or LeaveStatus.Approved){<form asp-action="Cancel" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@l.LeaveId"/><button class="btn btn-danger btn-sm">Cancel</button></form>}</td></tr>}
+ @if(!myLeave.Any()){<tr><td colspan="5" class="muted">No leave history yet.</td></tr>}
+ </tbody></table></div>
+</div>
+}
+<div class="card"><div class="card-header"><div><h3>@ViewData["Title"]</h3><p class="muted">Approvals are routed by role and department.@(User.IsInRole("Admin") ? $" {Model.Count(x => x.Status == LeaveStatus.Applied)} pending request(s) · {Model.Count()} total request(s) in history." : "")</p></div>@if(User.IsInRole("Employee") || User.IsInRole("HROfficer") || User.IsInRole("Manager") || User.IsInRole("PayrollOfficer")){<a class="btn btn-primary btn-sm" asp-action="Apply">Apply My Leave</a>}</div>
+<div class="card-body table-responsive"><table class="leave-table"><thead><tr><th>Employee ID</th><th>Employee</th><th>Department</th><th>Dates</th><th>Days</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+@foreach(var l in Model){ var days=WorkingDays(l.StartDate,l.EndDate); var targetRole=l.Employee?.User?.Role ?? UserRole.Employee; var ownId=int.TryParse(User.FindFirst("EmployeeId")?.Value,out var currentId)?currentId:0; <tr><td>EMP-@l.EmployeeId.ToString("000")</td><td>@l.Employee?.Name</td><td>@l.Employee?.Department?.DepartmentName</td><td>@l.StartDate.ToString("dd-MM-yyyy") to @l.EndDate.ToString("dd-MM-yyyy")</td><td>@days</td><td>@l.LeaveType</td><td><span class="badge leave-status @BadgeClass(l.Status)">@l.Status</span></td><td class="leave-actions">
+@if((User.IsInRole("Employee") || User.IsInRole("HROfficer") || User.IsInRole("PayrollOfficer")) && l.EmployeeId == ownId && (l.Status is LeaveStatus.Applied or LeaveStatus.Approved)){<form asp-action="Cancel" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@l.LeaveId"/><button class="btn btn-danger btn-sm">Cancel</button></form>}
+else if(l.Status==LeaveStatus.Applied && User.IsInRole("Admin") && (targetRole == UserRole.HROfficer || targetRole == UserRole.Manager || targetRole == UserRole.PayrollOfficer)){<div class="leave-actions"><form asp-action="Decide" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@l.LeaveId"/><input type="hidden" name="approve" value="true"/><button class="btn btn-success btn-sm">Approve</button></form><form asp-action="Decide" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@l.LeaveId"/><input type="hidden" name="approve" value="false"/><button class="btn btn-danger btn-sm">Reject</button></form></div>}
+else if(l.Status==LeaveStatus.Applied && User.IsInRole("Manager")){<div class="leave-actions"><form asp-action="Decide" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@l.LeaveId"/><input type="hidden" name="approve" value="true"/><button class="btn btn-success btn-sm">Approve</button></form><form asp-action="Decide" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@l.LeaveId"/><input type="hidden" name="approve" value="false"/><button class="btn btn-danger btn-sm">Reject</button></form></div>}
+else{<span class="muted">—</span>}
+</td></tr>}
+</tbody></table></div></div>

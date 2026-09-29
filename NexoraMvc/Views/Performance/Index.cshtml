@@ -1,0 +1,56 @@
+@model IEnumerable<Evaluation>
+@using NexoraEmployeePayroll.Enums
+@using NexoraEmployeePayroll.Models
+@{
+    var isManager = ViewBag.IsManager == true;
+    var isAdmin = User.IsInRole("Admin");
+    var isHr = User.IsInRole("HROfficer");
+    var appraisals = ViewBag.Appraisals as IEnumerable<Appraisal> ?? Array.Empty<Appraisal>();
+    var managerEmployees = ViewBag.ManagerEmployees as IEnumerable<Employee> ?? Array.Empty<Employee>();
+    var hrEmployees = ViewBag.HREmployees as IEnumerable<Employee> ?? Array.Empty<Employee>();
+    var adminStaff = ViewBag.AdminStaff as IEnumerable<Employee> ?? Array.Empty<Employee>();
+    var managerId = (int)(ViewBag.MyManagerId ?? 0);
+    ViewData["Title"] = User.IsInRole("Employee") ? "My Ratings" : "Performance & Appraisal";
+}
+
+@if (isManager)
+{
+    <div class="card">
+        <div class="card-header"><div><h3>Performance &amp; Appraisal</h3><p class="muted">Manager workspace — performance ratings only. Salary hikes and execution appraisals are handled by HR.</p></div><a class="btn btn-primary btn-sm" asp-action="Create">Give Performance Rating</a></div>
+        <div class="card-body table-responsive">
+            <h4>Team Performance Ratings</h4>
+            <table><thead><tr><th>Employee</th><th>Department</th><th>Date</th><th>Rating</th><th>Remarks</th></tr></thead><tbody>
+            @foreach (var e in Model) { <tr><td>EMP-@e.EmployeeId.ToString("000") — @e.Employee?.Name</td><td>@e.Employee?.Department?.DepartmentName</td><td>@e.EvaluationDate.ToString("dd-MM-yyyy")</td><td><span class="badge badge-paid">⭐ @e.Score / 5</span></td><td>@e.Remarks</td></tr> }
+            @if(!Model.Any()){<tr><td colspan="5" class="muted">No team performance ratings recorded yet.</td></tr>}
+            </tbody></table>
+        </div>
+    </div>
+    <div class="card"><div class="card-header"><div><h3>My Performance Rating History</h3><p class="muted">Ratings recorded by you for your team.</p></div></div><div class="card-body table-responsive"><table><thead><tr><th>Employee</th><th>Department</th><th>Date</th><th>Rating</th><th>Remarks</th></tr></thead><tbody>
+    @foreach(var e in Model.Where(x => x.EvaluatedByEmployeeId == managerId)){<tr><td>@e.Employee?.Name</td><td>@e.Employee?.Department?.DepartmentName</td><td>@e.EvaluationDate.ToString("dd-MM-yyyy")</td><td>⭐ @e.Score / 5</td><td>@e.Remarks</td></tr>}
+    @if(!Model.Any(x => x.EvaluatedByEmployeeId == managerId)){<tr><td colspan="5" class="muted">No performance ratings given by you yet.</td></tr>}
+    </tbody></table></div></div>
+    <div class="card"><div class="card-header"><h3>Salary &amp; Execution Appraisal</h3></div><div class="card-body"><p class="muted">Managers cannot provide salary hikes or execution appraisals. Only HR is authorized to grant an execution appraisal once per calendar year per employee.</p></div></div>
+}
+else if(isHr)
+{
+    <div class="card"><div class="card-header"><div><h3>Performance &amp; Appraisal</h3><p class="muted">HR can provide execution appraisals and salary hikes. Each employee can receive one execution appraisal per calendar year.</p></div></div><div class="card-body table-responsive"><h4>Team Performance Ratings</h4><table><thead><tr><th>Employee</th><th>Department</th><th>Date</th><th>Rating</th><th>Remarks</th></tr></thead><tbody>
+    @foreach(var e in Model){<tr><td>@e.Employee?.Name</td><td>@e.Employee?.Department?.DepartmentName</td><td>@e.EvaluationDate.ToString("dd-MM-yyyy")</td><td>⭐ @e.Score / 5</td><td>@e.Remarks</td></tr>}
+    @if(!Model.Any()){<tr><td colspan="5" class="muted">No performance ratings recorded yet.</td></tr>}
+    </tbody></table></div></div>
+    <div class="card"><div class="card-header"><h3>Execution Appraisal / Salary Hike</h3></div><div class="card-body"><form asp-action="Appraise" method="post" class="form-grid">@Html.AntiForgeryToken()<div class="form-group"><label>Employee</label><select name="EmployeeId" class="form-control" required><option value="">-- Select Employee --</option>@foreach(var e in hrEmployees){<option value="@e.EmployeeId">EMP-@e.EmployeeId.ToString("000") — @e.Name</option>}</select></div><div class="form-group"><label>New Salary</label><input name="NewSalary" type="number" min="1" step="0.01" class="form-control" required /></div><div class="form-group" style="display:flex;align-items:end"><button class="btn btn-success">Execution Appraisal</button></div></form></div></div>
+    <div class="card"><div class="card-header"><h3>Execution Appraisal History</h3></div><div class="card-body table-responsive"><table><thead><tr><th>Employee</th><th>Department</th><th>Date</th><th>New Salary</th></tr></thead><tbody>
+    @foreach(var a in appraisals){<tr><td>@a.Employee?.Name</td><td>@a.Employee?.Department?.DepartmentName</td><td>@a.AppraisalDate.ToString("dd-MM-yyyy")</td><td>₹@a.NewSalary.ToString("N0")</td></tr>}
+    @if(!appraisals.Any()){<tr><td colspan="4" class="muted">No execution appraisals recorded yet.</td></tr>}
+    </tbody></table></div></div>
+}
+else if(isAdmin)
+{
+    <div class="card"><div class="card-header"><div><h3>Performance &amp; Appraisal</h3><p class="muted">Admin can provide performance ratings and execution appraisals for active HR, Manager and Payroll Officer accounts.</p></div></div><div class="card-body table-responsive"><table><thead><tr><th>Staff</th><th>Role</th><th>Department</th><th>Date</th><th>Rating</th><th>Remarks</th></tr></thead><tbody>@foreach(var e in Model){<tr><td>@e.Employee?.Name</td><td>@e.Employee?.User?.Role</td><td>@e.Employee?.Department?.DepartmentName</td><td>@e.EvaluationDate.ToString("dd-MM-yyyy")</td><td>⭐ @e.Score / 5</td><td>@e.Remarks</td></tr>}@if(!Model.Any()){<tr><td colspan="6" class="muted">No performance ratings recorded yet.</td></tr>}</tbody></table></div></div>
+    <div class="card"><div class="card-header"><h3>Give Performance Rating to HR / Manager / Payroll</h3></div><div class="card-body"><form asp-action="Create" method="post" class="form-grid">@Html.AntiForgeryToken()<div class="form-group"><label>Staff Member</label><select name="EmployeeId" class="form-control" required><option value="">-- Select Staff --</option>@foreach(var e in adminStaff){<option value="@e.EmployeeId">@e.Name — @e.User?.Role — @e.Department?.DepartmentName</option>}</select></div><div class="form-group"><label>Rating (0-5)</label><input name="Score" type="number" min="0" max="5" step="0.1" class="form-control" required /></div><div class="form-group" style="grid-column:1/-1"><label>Remarks</label><textarea name="Remarks" class="form-control"></textarea></div><div class="form-group" style="display:flex;align-items:end"><button class="btn btn-primary" type="submit">Save Rating</button></div></form></div></div>
+    <div class="card"><div class="card-header"><h3>Execution Appraisal / Salary Hike</h3></div><div class="card-body"><form asp-action="Appraise" method="post" class="form-grid">@Html.AntiForgeryToken()<div class="form-group"><label>Staff Member</label><select name="EmployeeId" class="form-control" required><option value="">-- Select Staff --</option>@foreach(var e in adminStaff){<option value="@e.EmployeeId">@e.Name — @e.User?.Role — @e.Department?.DepartmentName</option>}</select></div><div class="form-group"><label>New Salary</label><input name="NewSalary" type="number" min="1" step="0.01" class="form-control" required /></div><div class="form-group" style="display:flex;align-items:end"><button class="btn btn-success" type="submit">Execution Appraisal</button></div></form></div></div>
+    <div class="card"><div class="card-header"><h3>Execution Appraisal History</h3></div><div class="card-body table-responsive"><table><thead><tr><th>Staff</th><th>Role</th><th>Department</th><th>Date</th><th>New Salary</th><th>Appraised By</th></tr></thead><tbody>@foreach(var a in appraisals){<tr><td>@a.Employee?.Name</td><td>@a.Employee?.User?.Role</td><td>@a.Employee?.Department?.DepartmentName</td><td>@a.AppraisalDate.ToString("dd-MM-yyyy")</td><td>₹@a.NewSalary.ToString("N0")</td><td>@(a.AppraisedByEmployeeId.HasValue ? $"EMP-{a.AppraisedByEmployeeId.Value:000}" : "System")</td></tr>}@if(!appraisals.Any()){<tr><td colspan="6" class="muted">No execution appraisals recorded yet.</td></tr>}</tbody></table></div></div>
+}
+else
+{
+    <div class="card"><div class="card-header"><div><h3>My Ratings</h3><p class="muted">Ratings and appraisal records are stored in SQL Server.</p></div></div><div class="card-body table-responsive"><table><thead><tr><th>Employee</th><th>Department</th><th>Date</th><th>Rating</th><th>Remarks</th></tr></thead><tbody>@foreach(var e in Model){<tr><td>@e.Employee?.Name</td><td>@e.Employee?.Department?.DepartmentName</td><td>@e.EvaluationDate.ToString("dd-MM-yyyy")</td><td>⭐ @e.Score / 5</td><td>@e.Remarks</td></tr>}</tbody></table></div></div>
+}

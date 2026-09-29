@@ -1,0 +1,4 @@
+<Solution>
+   <Project Path="NexoraMvc/NexoraEmployeePayroll.csproj" />
+   <Project Path="NexoraApi/NexoraApi.csproj" />
+</Solution>
