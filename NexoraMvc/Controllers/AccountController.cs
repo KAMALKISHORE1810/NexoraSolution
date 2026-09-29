@@ -18,6 +18,7 @@ public class AccountController(ApplicationDbContext db, IHttpClientFactory facto
     [HttpGet]
     public IActionResult Login() => User.Identity?.IsAuthenticated == true ? RedirectToAction("Index", "Dashboard") : View(new LoginViewModel());
 
+    
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
@@ -28,6 +29,7 @@ public class AccountController(ApplicationDbContext db, IHttpClientFactory facto
             return View(model);
         }
         var username = model.Username.Trim().ToLowerInvariant();
+        //fetching data from nexoraapi
         var response = await _httpClient.PostAsJsonAsync("api/auth/getuser", model);
         if(!response.IsSuccessStatusCode)
         {
